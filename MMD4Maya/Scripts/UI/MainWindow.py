@@ -5,7 +5,6 @@ from MMD4Maya.Scripts.UI.ExplorerWindow import *
 from MMD4Maya.Scripts.Utils import *
 from PySide2 import QtCore, QtWidgets
 
-import maya.OpenMayaUI as OpenMayaUI
 import maya.cmds as cmds
 import maya.utils
 import shiboken2
@@ -26,10 +25,12 @@ class MainWindow(object):
             self.mainWindow.AsyncProcess()
 
     def OnImportPmxButtonClicked(self, *args):
-        self.ShowExplorer('pmd')
+        file = cmds.fileDialog2(fileFilter="*.pmx *pmd", dialogStyle=2, fileMode=1, caption="Import pmx/pmd file")[0]
+        self.SetPmxFile(file)
 
     def OnAddVmdButtonClicked(self, *args):
-        self.ShowExplorer('vmd')
+        file = cmds.fileDialog2(fileFilter="*.vmd", dialogStyle=2, fileMode=1, caption="Add vmd file")[0]
+        self.AddVmdFile(file)
 
     def OnSelectVmdFile(self, *args):
         self.__selectedVmdFileIndex = cmds.textScrollList(self.vmdScrollList, query = True, selectIndexedItem = True)[0]
@@ -128,18 +129,11 @@ class MainWindow(object):
             ShowDefaultReadme()
 
     def SetPmxFile(self, fileName):
-        if(IsContainEastAsianWord(fileName)):
-            self.MessageBox('Only support English path!')
-            return
-        self.__pmxFile = ConvertToUnixPath(fileName).encode('ascii','ignore').decode()
+        self.__pmxFile = fileName
         cmds.textField(self.pmxText, edit=True, text=self.__pmxFile)
         self.CheckReadmeFile(self.__pmxFile)
 
     def AddVmdFile(self, fileName):
-        if(IsContainEastAsianWord(fileName)):
-            self.MessageBox('Only support English path!')
-            return
-        fileName = ConvertToUnixPath(fileName).encode('ascii','ignore')
         self.__vmdFileList.append(fileName)
         cmds.textScrollList(self.vmdScrollList, edit = True, append=[fileName])
 
@@ -160,12 +154,6 @@ class MainWindow(object):
 
     def MessageBox(self, msg = ''):
         cmds.confirmDialog(title='Confirm', message=msg)
-
-    def ShowExplorer(self, type = 'pmd'):
-        ptr = OpenMayaUI.MQtUtil.mainWindow()
-        widget = shiboken2.wrapInstance(int(ptr),QtWidgets.QWidget)
-        explorerWin = ExplorerWindow(widget, type, self)
-        explorerWin.show()
 
     def DeleteSelectedVmdFile(self):
         index = int(self.__selectedVmdFileIndex) - 1

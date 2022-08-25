@@ -1,6 +1,5 @@
 import maya.cmds as cmds
 import maya.mel as mel
-import maya.OpenMayaUI as OpenMayaUI
 
 from MMD4Maya.Scripts.UI.MainWindow import *
 
