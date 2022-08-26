@@ -1,9 +1,20 @@
 from MMD4Maya.Scripts.Utils import *
+import re
+from pykakasi import kakasi
 
 class FBXModifier:
 
     def __init__(self, mainWindow = None):
         self.mainWindow = mainWindow
+        self.kakasi = kakasi()
+        self.kakasi.setMode('H', 'a')
+        self.kakasi.setMode('K', 'a')
+        self.kakasi.setMode('J', 'a')
+        self.kakasi.setMode('E', 'a')
+        self.conv = self.kakasi.getConverter()
+
+        self.rMayaNaming = re.compile("[^a-zA-Z0-9_]")
+        self.rBeginWithNum = re.compile("^[0-9]+")
 
     def FormatMaterialName(self, name):
         newName = ''
@@ -14,11 +25,13 @@ class FBXModifier:
             newName = 'mat_' + name
         return newName
 
-    def FormatBoneName(self, name):
-        newName = 'No_' + name
-        newName = newName.replace('!', 'i_')
-        newName = newName.replace('.', '_')
+    def FormatName(self, name):
+        newName = name
+        newName = newName.replace('!', '')
         newName = newName.replace('+', '_Plus')
+        newName = self.rMayaNaming.sub("_", self.conv.do(newName))
+        if self.rBeginWithNum.match(newName)!=None:
+            newName = "_" + newName
         return newName
 
     def ModifyMaterialName(self, fbxFilePath):
@@ -52,47 +65,59 @@ class FBXModifier:
             else:
                 outputFbxFile.write(line)
         outputFbxFile.close()
+    
+    def ModifyName(self, inFbxFilePath, outFbxFilePath=None):
+        if outFbxFilePath==None:
+            outFbxFilePath = inFbxFilePath
 
-    def ModifyBoneName(self, fbxFilePath):
-        inputFbxFile = open(fbxFilePath, 'r', encoding='UTF-8')
-        inputFbxLines = inputFbxFile.readlines()
-        inputFbxFile.close()
-        tagBone = '"NodeAttribute::'
-        boneNames = []
-        # save bone names to array
-        for line in inputFbxLines:
-            if not line:
-                break
-            if tagBone in line:
-                nPos1 = line.find(tagBone)
-                temp = line[nPos1+len(tagBone):len(line)]
-                nPos2 = temp.find('",')
-                boneName = temp[0:nPos2]
-                boneNames.append(boneName)
-        # modify bone names in memory
-        newBoneNames = []
-        for i, boneName in enumerate(boneNames):
-            newBoneNames.append(self.FormatBoneName(boneName))
-        filterTags = ['NodeAttribute::', 'Model::', 'SubDeformer::']
-        inputFbxLinesLenth = len(inputFbxLines)
-        for i, line in enumerate(inputFbxLines):
-            if not line:
-                break
-            else:
-                for tag in filterTags:
-                    if tag in line:
-                        self.mainWindow.Log('modify line ' + str(i) + ' of ' + str(inputFbxLinesLenth))
-                        for j, boneName in enumerate(boneNames):
-                            inputFbxLines[i] = inputFbxLines[i].replace(boneNames[j], newBoneNames[j])
-                        break
-        # save modified bone names to file
-        outputFile = open(fbxFilePath, 'w', encoding='UTF-8')
-        for line in inputFbxLines:
-            if not line:
-                break
-            else:
-                outputFile.write(line)
-        outputFile.close()
+        inFbxFile = open(inFbxFilePath, 'r', encoding='UTF-8')
+        fbxContent = inFbxFile.read()
+        inFbxFile.close()
+
+        segs = fbxContent.split("::")
+        processIndexList = [i for i in range(len(segs)-1)]
+        nameMapping = {}
+        MAX_LEN = len(fbxContent)
+
+        self.mainWindow.Log(f"--- collecting modify info ...")
+        for index in processIndexList:
+            start = max(segs[index].rfind("\""),segs[index].rfind(";"),segs[index].rfind(" "))
+            tag = segs[index][start+1:]
+            if tag not in ['NodeAttribute', 'Model', 'SubDeformer', 'Geometry']:
+                processIndexList.remove(index)
+                continue
+            if tag not in ["NodeAttribute", 'Geometry']:
+                continue
+
+            def nonNegativeMin(a,b):
+                return min(a,b) if a>=0 and b>=0 else a if a>=0 else b if b>=0 else MAX_LEN
+
+            end = nonNegativeMin(segs[index+1].find(","),nonNegativeMin(segs[index+1].find("\n"),segs[index+1].find("\"")))
+            name = segs[index+1][:end]
+            if name not in nameMapping.keys():
+                newName = self.FormatName(name)
+                while newName in nameMapping.values():
+                    newName = newName + "_"
+                if name!=newName:
+                    nameMapping[name] = newName
+        
+        total = len(processIndexList)
+        for i, index in enumerate(processIndexList):
+            if i%10000==0:
+                self.mainWindow.Log(f"--- modifying names: %d/%d"%(i,total))
+            start = max(segs[index].rfind("\""),segs[index].rfind(";"),segs[index].rfind(" "))
+            tag = segs[index][start+1:]
+            end = nonNegativeMin(segs[index+1].find(","),nonNegativeMin(segs[index+1].find("\n"),segs[index+1].find("\"")))
+            name = segs[index+1][:end]
+            if tag in ['NodeAttribute', 'Model', 'SubDeformer', 'Geometry'] and name in nameMapping.keys():
+                segs[index+1] = segs[index+1].replace(name, nameMapping[name],1)
+
+        self.mainWindow.Log(f"--- modifying names: %d/%d finish!"%(total,total))
+        fbxContent = "::".join(segs)
+        self.mainWindow.Log("--- writing temp file")
+        outFbxFile = open(outFbxFilePath, 'w', encoding='UTF-8')
+        outFbxFile.write(fbxContent)
+        outFbxFile.close()
 
     def ModifyXmlFile(self, xmlFilePath):
         extraTextureDir = GetExtraTextureDir()
@@ -104,6 +129,6 @@ class FBXModifier:
     def Process(self, fbxFilePath):
         xmlFilePath = GetDirFormFilePath(fbxFilePath) + GetFileNameFromFilePath(fbxFilePath) + ".xml"
         self.ModifyMaterialName(fbxFilePath)
-        self.ModifyBoneName(fbxFilePath)
+        self.ModifyName(fbxFilePath)
         self.ModifyXmlFile(xmlFilePath)
-        print('modify process completed!')
+        self.mainWindow.Log('modify process completed!')
