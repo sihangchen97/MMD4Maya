@@ -1,6 +1,7 @@
 import os, sys
 import unicodedata
 import MMD4Maya.Scripts.Chardet as chardet
+import codecs
 
 def ConvertToUnixPath(path = ""):
     return path.replace("\\", "/")
@@ -40,11 +41,11 @@ def CreateDirInParentDir(parentDir = "", newDirName = ""):
 
 def ReplaceAllStringInFile(filePath, sourceStr, targetStr):
     print('ReplaceAllStringInFile ' + filePath + ' from ' + sourceStr + ' to ' + targetStr)
-    inputFile = open(filePath, 'r', encoding=CheckCharset(filePath))
+    inputFile = codecs.open(filePath, 'r', encoding=CheckCharset(filePath))
     lines = inputFile.readlines()
     inputFile.close()
 
-    outputFile = open(filePath, 'w', encoding=CheckCharset(filePath))
+    outputFile = codecs.open(filePath, 'w', encoding=CheckCharset(filePath))
     for line in lines:
         if not line:
             break
@@ -71,7 +72,7 @@ def IsContainEastAsianWord(text = ''):
     return result
 
 def CheckCharset(filePath):
-    with open(filePath, "rb") as f:
+    with codecs.open(filePath, "rb") as f:
         data = f.read(4)
         charset = chardet.detect(data)['encoding']
     return charset

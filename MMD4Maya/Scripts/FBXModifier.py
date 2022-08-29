@@ -1,6 +1,7 @@
 from MMD4Maya.Scripts.Utils import *
 import re
 from pykakasi import kakasi
+import codecs
 
 class FBXModifier:
 
@@ -35,10 +36,10 @@ class FBXModifier:
         return newName
 
     def ModifyMaterialName(self, fbxFilePath):
-        inputFbxFile = open(fbxFilePath, 'r', encoding='UTF-8')
+        inputFbxFile = codecs.open(fbxFilePath, 'r', encoding='UTF-8')
         inputFbxLines = inputFbxFile.readlines()
         inputFbxFile.close()
-        outputFbxFile = open(fbxFilePath, 'w', encoding='UTF-8')
+        outputFbxFile = codecs.open(fbxFilePath, 'w', encoding='UTF-8')
         tag1 = 'Material::'
         tag2 = ';Material::'
         for line in inputFbxLines:
@@ -70,7 +71,7 @@ class FBXModifier:
         if outFbxFilePath==None:
             outFbxFilePath = inFbxFilePath
 
-        inFbxFile = open(inFbxFilePath, 'r', encoding='UTF-8')
+        inFbxFile = codecs.open(inFbxFilePath, 'r', encoding='UTF-8')
         fbxContent = inFbxFile.read()
         inFbxFile.close()
 
@@ -79,7 +80,7 @@ class FBXModifier:
         nameMapping = {}
         MAX_LEN = len(fbxContent)
 
-        self.mainWindow.Log(f"--- collecting modify info ...")
+        self.mainWindow.Log("--- collecting modify info ...")
         for index in processIndexList:
             start = max(segs[index].rfind("\""),segs[index].rfind(";"),segs[index].rfind(" "))
             tag = segs[index][start+1:]
@@ -104,7 +105,7 @@ class FBXModifier:
         total = len(processIndexList)
         for i, index in enumerate(processIndexList):
             if i%10000==0:
-                self.mainWindow.Log(f"--- modifying names: %d/%d"%(i,total))
+                self.mainWindow.Log("--- modifying names: {}/{}".format(i,total))
             start = max(segs[index].rfind("\""),segs[index].rfind(";"),segs[index].rfind(" "))
             tag = segs[index][start+1:]
             end = nonNegativeMin(segs[index+1].find(","),nonNegativeMin(segs[index+1].find("\n"),segs[index+1].find("\"")))
@@ -112,10 +113,10 @@ class FBXModifier:
             if tag in ['NodeAttribute', 'Model', 'SubDeformer', 'Geometry'] and name in nameMapping.keys():
                 segs[index+1] = segs[index+1].replace(name, nameMapping[name],1)
 
-        self.mainWindow.Log(f"--- modifying names: %d/%d finish!"%(total,total))
+        self.mainWindow.Log("--- modifying names: {}/{} finish!".format(total,total))
         fbxContent = "::".join(segs)
         self.mainWindow.Log("--- writing temp file")
-        outFbxFile = open(outFbxFilePath, 'w', encoding='UTF-8')
+        outFbxFile = codecs.open(outFbxFilePath, 'w', encoding='UTF-8')
         outFbxFile.write(fbxContent)
         outFbxFile.close()
 

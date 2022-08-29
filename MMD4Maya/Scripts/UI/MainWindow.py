@@ -12,6 +12,7 @@ import shutil
 import threading
 import os
 import glob
+import codecs
 
 class MainWindow(object):
 
@@ -115,7 +116,7 @@ class MainWindow(object):
             for readmeFile in txtFilenames:
                 readmeFile = ConvertToUnixPath(readmeFile)
                 if os.path.exists(readmeFile):
-                    inputFile = open(readmeFile, encoding=CheckCharset(readmeFile), errors='ignore')
+                    inputFile = codecs.open(readmeFile, encoding=CheckCharset(readmeFile), errors='ignore')
                     lines = inputFile.readlines()
                     inputFile.close()
                     try:
