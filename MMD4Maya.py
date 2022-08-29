@@ -1,13 +1,27 @@
 import maya.cmds as cmds
 import maya.mel as mel
+import maya.OpenMaya as OpenMaya
+import sys
+import MMD4Maya.Scripts.SetupManager as SetupManager
 
-from MMD4Maya.Scripts.UI.MainWindow import *
+if not SetupManager.SetupPip():
+	OpenMaya.MGlobal.displayError("MMD4Maya --- Setup pip Failed!")  # Red background
+	
+if not SetupManager.SetupModule("pykakasi", 1.2 if sys.version_info.major==2 else None):
+	OpenMaya.MGlobal.displayError("MMD4Maya --- Setup Module pykakasi Failed!")
+
+try:
+	from MMD4Maya.Scripts.UI.MainWindow import MainWindow
+	initialized = True
+except:
+	OpenMaya.MGlobal.displayError("MMD4Maya --- Failed to Load MMD4Maya Plugin")
+	initialized = False
 
 def ShowMainWindow(*args):
-    MainWindow()
+	MainWindow()
 
 def ShowHelp(*args):
-	cmds.confirmDialog(title = "Help", message = "\
+	cmds.confirmDialog(title = "Help", icon = "information", message = "\
 Steps to import:\n\
 1. Select a pmx/pmd file.\n\
 2. Select one or multiple vmd files.\n\
@@ -20,10 +34,14 @@ Attention:\n\
 Enjoy! >_< \n\
 \n\
 Author: Takamachi Marisa\n\
-Contact: http://weibo.com/u/2832212042",\
-	icon = "information")
+Contact: http://weibo.com/u/2832212042")
 
-def CustomMayaMenu():
+# Initialize the plug-in
+def initializePlugin(plugin):
+	if not initialized:
+		cmds.unloadPlugin('MMD4Maya.py')
+		return
+		
 	gMainWindow = mel.eval('$temp1=$gMainWindow')
 	menus = cmds.window(gMainWindow, q = True, menuArray = True)
 	found = False
@@ -38,10 +56,11 @@ def CustomMayaMenu():
 		cmds.menuItem(parent = customMenu, label = "Open MMD4Maya", c = ShowMainWindow)
 		cmds.menuItem(parent = customMenu, label = "Help", c = ShowHelp)
 
-# Initialize the plug-in
-def initializePlugin(plugin):
-	CustomMayaMenu()
-
 # Uninitialize the plug-in
 def uninitializePlugin(plugin):
-	pass
+	gMainWindow = mel.eval('$temp1=$gMainWindow')
+	menus = cmds.window(gMainWindow, q = True, menuArray = True)	
+	for menu in menus:
+		label = cmds.menu(menu, q = True, label = True)
+		if label == "MMD4Maya":
+			cmds.deleteUI(menu)
