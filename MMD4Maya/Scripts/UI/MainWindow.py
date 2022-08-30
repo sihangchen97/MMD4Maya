@@ -26,12 +26,18 @@ class MainWindow(object):
             self.mainWindow.AsyncProcess()
 
     def OnImportPmxButtonClicked(self, *args):
-        file = cmds.fileDialog2(fileFilter="*.pmx *pmd", dialogStyle=2, fileMode=1, caption="Import pmx/pmd file")[0]
-        self.SetPmxFile(file)
+        try:
+            file = cmds.fileDialog2(fileFilter="*.pmx *pmd", dialogStyle=2, fileMode=1, caption="Import pmx/pmd file")[0]
+            self.SetPmxFile(file)
+        except:
+            pass
 
     def OnAddVmdButtonClicked(self, *args):
-        file = cmds.fileDialog2(fileFilter="*.vmd", dialogStyle=2, fileMode=1, caption="Add vmd file")[0]
-        self.AddVmdFile(file)
+        try:
+            file = cmds.fileDialog2(fileFilter="*.vmd", dialogStyle=2, fileMode=1, caption="Add vmd file")[0]
+            self.AddVmdFile(file)
+        except:
+            pass
 
     def OnSelectVmdFile(self, *args):
         self.__selectedVmdFileIndex = cmds.textScrollList(self.vmdScrollList, query = True, selectIndexedItem = True)[0]
@@ -96,7 +102,7 @@ class MainWindow(object):
                       onCommand = self.OnTransparencyCheckBoxOn, offCommand = self.OnTransparencyCheckBoxOff)
 
         cmds.separator(parent = processLayout, height = 8, style = 'none')
-        self.logText = cmds.scrollField(parent = processLayout, width = 600, height = 297, editable = False)
+        self.logText = cmds.scrollField(parent = processLayout, width = 600, height = 297, editable = False, wordWrap=True)
         cmds.separator(parent = processLayout, height = 10, style = 'none')
         cmds.checkBox(parent = processLayout, label='You must agree to these terms of use before using the model/motion.', 
                       onCommand = self.OnTermsCheckBoxOn, offCommand = self.OnTermsCheckBoxOff)
@@ -165,7 +171,10 @@ class MainWindow(object):
 
     def CleanTempFiles(self):
         # clean temp fbx directory
-        shutil.rmtree(GetDirFormFilePath(self.fbxFilePath),True)
+        try:
+            shutil.rmtree(GetDirFormFilePath(self.fbxFilePath),True)
+        except:
+            pass
         # clean *.anim.bytes files
         for vmdFile in self.__vmdFileList:
             bytesFile = GetDirFormFilePath(vmdFile) + GetFileNameFromFilePath(vmdFile) + '.anim.bytes'
