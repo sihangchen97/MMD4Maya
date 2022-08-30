@@ -9,6 +9,8 @@ class FBXConverter:
         self.mainWindow = mainWindow
 
     def ExecutePMX2FBX(self, command, cmdConsole = True):
+        if sys.version_info.major==2:
+            command = command.encode("gbk")
         if cmdConsole:
             subprocess.call(command)
         else:
